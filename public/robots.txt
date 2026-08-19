@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://aziz0103.github.io/sitemap.xml
