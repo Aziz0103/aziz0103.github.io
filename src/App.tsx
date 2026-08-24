@@ -98,7 +98,7 @@ export default function Home() {
       </section>
 
       <section className="projects section" id="projects"><SectionHeading eyebrow="03 / Selected work" title="Anonymized engineering case studies." intro="The systems are confidential. The engineering decisions are worth sharing." />
-        <div className="project-list">{projects.map((project, index) => { const expanded = expandedProject === index; return <article className={`project reveal ${expanded ? "expanded" : ""}`} key={project.title}>
+        <div className="project-list">{projects.map((project, index) => { const expanded = expandedProject === index; return <article className="project reveal" data-expanded={expanded ? "true" : "false"} key={project.title}>
           <button type="button" className="project-summary" aria-expanded={expanded} onClick={() => setExpandedProject(expanded ? null : index)}><span className="project-number">{project.number}</span><span className="project-main"><strong>{project.title}</strong><span>{project.summary}</span></span><span className="project-toggle" aria-hidden="true">{expanded ? "−" : "+"}</span></button>
           <div className="project-details"><div><span>Problem</span><p>{project.problem}</p></div><div><span>My contribution</span><p>{project.contribution}</p></div><div><span>Technical approach</span><p>{project.approach}</p></div><div><span>Engineering consideration</span><p>{project.lesson}</p></div><ul>{project.tech.map((tech) => <li key={tech}>{tech}</li>)}</ul></div>
         </article>; })}</div>
