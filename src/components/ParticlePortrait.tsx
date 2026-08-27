@@ -10,13 +10,14 @@ type Particle = {
   radius: number;
   alpha: number;
   phase: number;
+  importance: number;
 };
 
 const portraitConfig = {
-  desktopSpacing: 5.2,
-  mobileSpacing: 7,
-  maxDesktopParticles: 3_200,
-  maxMobileParticles: 1_300,
+  desktopSpacing: 4.9,
+  mobileSpacing: 6.4,
+  maxDesktopParticles: 3_400,
+  maxMobileParticles: 1_450,
   springStrength: 0.045,
   friction: 0.86,
   interactionRadius: 86,
@@ -109,6 +110,7 @@ export function ParticlePortrait() {
       const pixels = sampleContext.getImageData(0, 0, sampleCanvas.width, sampleCanvas.height).data;
       const sampled: Particle[] = [];
       const edge = Math.ceil(spacing);
+      const detailRadius = Math.max(2, Math.round(spacing * 0.5));
 
       for (let y = edge; y < sampleCanvas.height - edge; y += spacing) {
         for (let x = edge; x < sampleCanvas.width - edge; x += spacing) {
@@ -119,20 +121,44 @@ export function ParticlePortrait() {
           if (darkness < 0.055) continue;
 
           const horizontalEdge = Math.abs(
-            luminanceAt(pixels, sampleCanvas.width, pixelX - edge, pixelY)
-              - luminanceAt(pixels, sampleCanvas.width, pixelX + edge, pixelY),
+            luminanceAt(pixels, sampleCanvas.width, pixelX - detailRadius, pixelY)
+              - luminanceAt(pixels, sampleCanvas.width, pixelX + detailRadius, pixelY),
           ) / 255;
           const verticalEdge = Math.abs(
-            luminanceAt(pixels, sampleCanvas.width, pixelX, pixelY - edge)
-              - luminanceAt(pixels, sampleCanvas.width, pixelX, pixelY + edge),
+            luminanceAt(pixels, sampleCanvas.width, pixelX, pixelY - detailRadius)
+              - luminanceAt(pixels, sampleCanvas.width, pixelX, pixelY + detailRadius),
           ) / 255;
-          const detail = clamp(horizontalEdge + verticalEdge, 0, 1);
-          const chance = clamp((darkness - 0.04) * 0.88 + detail * 0.7, 0, 0.94);
+          const surroundingLuminance = (
+            luminanceAt(pixels, sampleCanvas.width, pixelX - detailRadius, pixelY)
+            + luminanceAt(pixels, sampleCanvas.width, pixelX + detailRadius, pixelY)
+            + luminanceAt(pixels, sampleCanvas.width, pixelX, pixelY - detailRadius)
+            + luminanceAt(pixels, sampleCanvas.width, pixelX, pixelY + detailRadius)
+          ) / 4;
+          const centerContrast = Math.abs(luminance - surroundingLuminance) / 255;
+          const detail = clamp(horizontalEdge + verticalEdge + centerContrast * 1.4, 0, 1);
+
+          // The supplied portrait is centered, so an elliptical facial mask lets us
+          // preserve more skin-tone samples and strongly favor identity-defining edges.
+          const normalizedX = x / sampleCanvas.width;
+          const normalizedY = y / sampleCanvas.height;
+          const faceX = (normalizedX - 0.5) / 0.32;
+          const faceY = (normalizedY - 0.36) / 0.34;
+          const facialFocus = clamp(1 - (faceX * faceX + faceY * faceY), 0, 1);
+          const importance = clamp(facialFocus * (0.5 + detail * 1.65), 0, 1);
+          const chance = clamp(
+            (darkness - 0.035) * 0.76
+              + detail * 0.72
+              + facialFocus * (0.24 + detail * 0.72),
+            0,
+            0.98,
+          );
           const noise = seededNoise(pixelX, pixelY);
           if (noise > chance) continue;
 
           const phase = seededNoise(pixelX + 17, pixelY + 31) * Math.PI * 2;
-          const initialOffset = reducedMotion ? 0 : (seededNoise(pixelX + 7, pixelY + 13) - 0.5) * 2.5;
+          const initialOffset = reducedMotion
+            ? 0
+            : (seededNoise(pixelX + 7, pixelY + 13) - 0.5) * 2.5 * (1 - importance * 0.6);
           sampled.push({
             homeX: x,
             homeY: y,
@@ -140,9 +166,10 @@ export function ParticlePortrait() {
             y: y - initialOffset,
             vx: 0,
             vy: 0,
-            radius: 0.55 + darkness * 1.15 + detail * 0.55,
-            alpha: clamp(0.32 + darkness * 0.58 + detail * 0.35, 0.35, 1),
+            radius: 0.48 + darkness * 0.95 + detail * 0.75 + importance * 0.28,
+            alpha: clamp(0.28 + darkness * 0.45 + detail * 0.5 + importance * 0.3, 0.34, 1),
             phase,
+            importance,
           });
         }
       }
@@ -158,10 +185,17 @@ export function ParticlePortrait() {
 
       const maxParticles = isMobile ? portraitConfig.maxMobileParticles : portraitConfig.maxDesktopParticles;
       if (sampled.length > maxParticles) {
-        sampled = Array.from(
-          { length: maxParticles },
-          (_, index) => sampled[Math.floor(index * sampled.length / maxParticles)],
+        const selectEvenly = (source: Particle[], count: number) => Array.from(
+          { length: Math.min(count, source.length) },
+          (_, index) => source[Math.floor(index * source.length / Math.min(count, source.length))],
         );
+        const facialParticles = sampled.filter((particle) => particle.importance > 0.16);
+        const supportingParticles = sampled.filter((particle) => particle.importance <= 0.16);
+        const facialLimit = Math.min(facialParticles.length, Math.floor(maxParticles * 0.72));
+        sampled = [
+          ...selectEvenly(facialParticles, facialLimit),
+          ...selectEvenly(supportingParticles, maxParticles - facialLimit),
+        ];
       }
 
       particles = sampled;
@@ -205,11 +239,14 @@ export function ParticlePortrait() {
       const interactionRadiusSquared = portraitConfig.interactionRadius ** 2;
 
       for (const particle of particles) {
-        const idleX = Math.sin(time * 0.00055 + particle.phase) * portraitConfig.idleAmplitude;
-        const idleY = Math.cos(time * 0.00043 + particle.phase) * portraitConfig.idleAmplitude;
+        const stability = particle.importance;
+        const idleScale = 1 - stability * 0.7;
+        const spring = portraitConfig.springStrength * (1 + stability * 0.75);
+        const idleX = Math.sin(time * 0.00055 + particle.phase) * portraitConfig.idleAmplitude * idleScale;
+        const idleY = Math.cos(time * 0.00043 + particle.phase) * portraitConfig.idleAmplitude * idleScale;
 
-        particle.vx += (particle.homeX + idleX - particle.x) * portraitConfig.springStrength * delta;
-        particle.vy += (particle.homeY + idleY - particle.y) * portraitConfig.springStrength * delta;
+        particle.vx += (particle.homeX + idleX - particle.x) * spring * delta;
+        particle.vy += (particle.homeY + idleY - particle.y) * spring * delta;
 
         if (pointer.active) {
           const offsetX = particle.x - pointer.x;
@@ -219,7 +256,7 @@ export function ParticlePortrait() {
           if (distanceSquared > 0.1 && distanceSquared < interactionRadiusSquared) {
             const distance = Math.sqrt(distanceSquared);
             const falloff = 1 - distance / portraitConfig.interactionRadius;
-            const force = falloff * falloff * portraitConfig.interactionStrength * delta;
+            const force = falloff * falloff * portraitConfig.interactionStrength * (1 - stability * 0.55) * delta;
             particle.vx += offsetX / distance * force;
             particle.vy += offsetY / distance * force;
           }
