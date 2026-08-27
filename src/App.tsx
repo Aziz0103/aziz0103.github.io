@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LearningRadar } from "./components/LearningRadar";
+import { ParticlePortrait } from "./components/ParticlePortrait";
 import { siteConfig } from "./siteConfig";
 
 const navItems = [["Home", "#home"], ["About", "#about"], ["Experience", "#experience"], ["Projects", "#projects"], ["Skills", "#skills"], ["Contact", "#contact"]] as const;
@@ -78,7 +80,7 @@ export default function Home() {
       </section>
 
       <section className="about section" id="about"><SectionHeading eyebrow="01 / About" title="Backend engineering where correctness matters." />
-        <div className="about-layout"><div className="about-profile reveal"><div className="monogram">AS<span /></div><p>Strong middle-level developer<br />growing toward senior-level system design.</p></div>
+        <div className="about-layout"><div className="about-profile reveal"><ParticlePortrait /><p>Strong middle-level developer<br />growing toward senior-level system design.</p></div>
           <div className="about-copy reveal"><p className="large-copy">I work primarily on backend systems in banking and fintech—where a “small” change often touches business rules, integrations, data integrity, and production operations.</p><p>My work spans payment processing, external integrations, AML and lending workflows, database-heavy applications, reporting automation, and the migration of legacy .NET applications toward modern ASP.NET Core architectures. Two years of professional React and Next.js work also help me design APIs with a practical understanding of their frontend consumers.</p>
             <div className="focus-list">{["Reliable, maintainable backend systems", "Clean boundaries and separation of concerns", "Secure external API integrations", "Database performance and correctness", "Business rules before code", "Safe, incremental legacy improvement"].map((item, index) => <div key={item}><span>{String(index + 1).padStart(2, "0")}</span>{item}</div>)}</div>
           </div></div>
@@ -110,7 +112,7 @@ export default function Home() {
 
       <section className="approach section"><SectionHeading eyebrow="05 / Method" title="How I approach engineering." /><div className="principles">{principles.map(([number, title, copy]) => <article className="principle reveal" key={number}><span>{number}</span><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
 
-      <section className="learning section"><div className="learning-copy reveal"><p className="eyebrow"><span>06 / Currently learning</span></p><h2>Growing the system-design layer.</h2><p>Active areas of development—not a list of claimed expertise.</p></div><div className="learning-orbit reveal">{["Advanced Clean Architecture & DDD", "Distributed systems", "Resilient integrations", "ASP.NET Core performance", "Redis caching", "Observability & structured logging"].map((item, i) => <span key={item} style={{ "--i": i } as React.CSSProperties}>{item}</span>)}</div></section>
+      <section className="learning section"><div className="learning-copy reveal"><p className="eyebrow"><span>06 / Currently learning</span></p><h2>Growing the system-design layer.</h2><p>Active areas of development—not a list of claimed expertise.</p></div><LearningRadar /></section>
 
       <section className="contact section" id="contact"><div className="contact-panel reveal"><p className="eyebrow"><span>07 / Contact</span></p><h2>Let’s build something<br /><em>dependable.</em></h2><p>I’m interested in backend engineering, fintech systems, API integrations, and challenging .NET projects.</p><div className="contact-links"><a className="button primary" href={siteConfig.linkedinUrl} target="_blank" rel="noreferrer">Connect on LinkedIn ↗</a><a className="button secondary" href={siteConfig.githubUrl} target="_blank" rel="noreferrer">View GitHub ↗</a><span className="contact-note"><span className="pulse" /> Public email not listed</span></div></div></section>
     </main>
